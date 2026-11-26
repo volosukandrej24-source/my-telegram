@@ -3,490 +3,393 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Telegram Web — Glass</title>
+  <title>PointGram</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     :root {
-      --glass: rgba(18, 25, 40, 0.72);
-      --glass-card: rgba(30, 41, 59, 0.55);
-      --border: rgba(255, 255, 255, 0.1);
-      --accent: #3b82f6;
-      --text: #f8fafc;
-      --dim: #94a3b8;
+      --bg: #000000;
+      --bar: rgba(24, 24, 26, 0.92);
+      --card: #1c1c1e;
+      --card2: #2c2c2e;
+      --sep: rgba(255, 255, 255, 0.1);
+      --blue: #0a84ff;
+      --msg-out: #2b5278;
+      --msg-in: #182533;
+      --purple: #bf5af2;
+      --gold: #ffd60a;
+      --sub: #8e8e93;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif; }
-    body { background: radial-gradient(circle at 15% 20%, #172554 0%, #090d16 50%, #1e1b4b 100%); color: var(--text); height: 100dvh; overflow: hidden; }
-    .orb { position: fixed; border-radius: 50%; filter: blur(80px); z-index: 0; pointer-events: none; animation: float 12s infinite alternate ease-in-out; }
-    .orb-1 { width: 300px; height: 300px; background: rgba(59,130,246,0.28); top: -60px; left: -60px; }
-    .orb-2 { width: 350px; height: 350px; background: rgba(139,92,246,0.24); bottom: -80px; right: -60px; animation-delay: -4s; }
-    @keyframes float { to { transform: translate(35px, 25px) scale(1.1); } }
-    .glass { background: var(--glass); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%); border: 1px solid var(--border); }
-        #auth-screen { position: relative; z-index: 2; height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .auth-card { width: 100%; max-width: 380px; padding: 34px 26px; border-radius: 26px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.6); animation: pop 0.4s cubic-bezier(0.16,1,0.3,1); }
-    @keyframes pop { from { opacity: 0; transform: scale(0.92) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-    .tg-circle { width: 74px; height: 74px; margin: 0 auto 18px; border-radius: 50%; background: linear-gradient(135deg,#38bdf8,#3b82f6); display: flex; align-items: center; justify-content: center; font-size: 34px; box-shadow: 0 10px 25px rgba(59,130,246,0.45); }
-    .inp { width: 100%; padding: 13px 15px; border-radius: 14px; background: rgba(15,23,42,0.65); border: 1px solid var(--border); color: #fff; font-size: 16px; margin-bottom: 12px; outline: none; }
-    .btn { width: 100%; padding: 13px; border-radius: 14px; border: none; background: linear-gradient(135deg,#3b82f6,#2563eb); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    .btn:active { transform: scale(0.97); }
-    #app-screen { position: relative; z-index: 2; display: none; width: 100%; height: 100dvh; max-width: 1400px; margin: 0 auto; }
-    .sidebar { width: 350px; height: 100%; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-    .top-bar { padding: 12px 14px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--border); }
-    .icon-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border); background: var(--glass-card); color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .search { flex: 1; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border); background: rgba(15,23,42,0.55); color: #fff; font-size: 14px; outline: none; }
-    .tabs { display: flex; padding: 8px 12px; gap: 6px; border-bottom: 1px solid var(--border); }
-    .tab { flex: 1; padding: 7px; border-radius: 10px; border: none; background: transparent; color: var(--dim); font-size: 13px; font-weight: 600; cursor: pointer; }
-    .tab.active { background: rgba(59,130,246,0.25); color: #60a5fa; }
-        .chat-list { flex: 1; overflow-y: auto; padding: 8px; }
-    .chat-item { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 16px; cursor: pointer; transition: 0.2s; margin-bottom: 4px; }
-    .chat-item:hover { background: rgba(255,255,255,0.06); }
-    .avatar { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; flex-shrink: 0; }
-    .chat-info { flex: 1; overflow: hidden; }
-    .chat-title { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 5px; }
-    .chat-sub { font-size: 13px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .badge-v { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; background: #38bdf8; color: #090d16; border-radius: 50%; font-size: 10px; font-weight: 900; }
-    .badge-p { color: #c084fc; font-size: 14px; }
-    .chat-area { flex: 1; height: 100%; display: flex; flex-direction: column; background: rgba(9,13,22,0.35); }
-    .chat-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-    .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .msg { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; animation: slide 0.22s ease-out; word-wrap: break-word; }
-    @keyframes slide { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    .msg.in { background: rgba(30,41,59,0.8); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
-    .msg.out { background: linear-gradient(135deg,rgba(59,130,246,0.85),rgba(99,102,241,0.85)); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .gift-card { background: linear-gradient(135deg,rgba(168,85,247,0.35),rgba(59,130,246,0.35)); border: 1px solid rgba(192,132,252,0.5); border-radius: 16px; padding: 14px; text-align: center; margin-top: 4px; }
-    .input-bar { padding: 10px 14px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); }
-    .input-bar input { flex: 1; padding: 11px 15px; border-radius: 20px; border: 1px solid var(--border); background: rgba(15,23,42,0.75); color: #fff; font-size: 15px; outline: none; }
-    .send-btn { width: 42px; height: 42px; border-radius: 50%; border: none; background: linear-gradient(135deg,#3b82f6,#6366f1); color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; }
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 20; display: none; }
-    .drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 280px; z-index: 25; padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; transform: translateX(-100%); transition: 0.3s cubic-bezier(0.16,1,0.3,1); }
-    .drawer.open { transform: translateX(0); }
-    .d-item { padding: 12px; border-radius: 12px; cursor: pointer; font-size: 15px; display: flex; align-items: center; gap: 12px; }
-    .d-item:hover { background: rgba(255,255,255,0.08); }
-    .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 92%; max-width: 420px; max-height: 84dvh; overflow-y: auto; border-radius: 22px; padding: 22px; z-index: 30; display: none; }
-    .modal.open { display: block; animation: pop 0.25s ease-out; }
-    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-    .shop-card { background: rgba(15,23,42,0.65); border: 1px solid var(--border); border-radius: 14px; padding: 12px; text-align: center; }
-    .nft-tag { display: inline-block; padding: 4px 9px; border-radius: 8px; font-size: 12px; background: rgba(139,92,246,0.25); border: 1px solid rgba(167,139,250,0.4); margin: 3px; }
-    .back-btn { display: none; }
-    @media (max-width: 768px) {
-      .sidebar { width: 100%; position: absolute; inset: 0; z-index: 5; }
-      .chat-area { width: 100%; position: absolute; inset: 0; z-index: 6; transform: translateX(100%); transition: 0.28s cubic-bezier(0.16,1,0.3,1); }
-      .chat-area.open { transform: translateX(0); }
-      .back-btn { display: flex; }
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Roboto", sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: #fff; height: 100dvh; overflow: hidden; user-select: none; }
+    .hidden { display: none !important; }
+    .screen { height: 100dvh; display: flex; flex-direction: column; }
+    .ios-header { background: var(--bar); backdrop-filter: blur(20px); border-bottom: 0.5px solid var(--sep); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
+        .ios-title-lg { font-size: 28px; font-weight: 700; padding: 8px 16px 10px; letter-spacing: -0.5px; }
+    .search-box { margin: 0 16px 10px; background: var(--card); border-radius: 10px; padding: 9px 12px; display: flex; align-items: center; gap: 8px; }
+    .search-box input { background: none; border: none; color: #fff; font-size: 16px; width: 100%; outline: none; }
+    .scroll-area { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+    .chat-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; position: relative; }
+    .chat-row:active { background: var(--card); }
+    .chat-row::after { content: ''; position: absolute; left: 78px; right: 0; bottom: 0; height: 0.5px; background: var(--sep); }
+    .avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #37aee2, #007aff); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 19px; flex-shrink: 0; }
+    .chat-wall { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; background-color: #0b141e; background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px); background-size: 18px 18px; }
+    .msg { max-width: 78%; padding: 9px 13px; border-radius: 18px; font-size: 15.5px; line-height: 1.35; position: relative; word-wrap: break-word; }
+    .msg.out { align-self: flex-end; background: var(--msg-out); border-bottom-right-radius: 4px; }
+    .msg.in { align-self: flex-start; background: var(--msg-in); border-bottom-left-radius: 4px; }
+    .msg-time { font-size: 11px; color: rgba(255,255,255,0.55); text-align: right; margin-top: 3px; }
+    .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 64px; background: var(--bar); backdrop-filter: blur(20px); border-top: 0.5px solid var(--sep); display: flex; justify-content: space-around; align-items: center; z-index: 50; }
+    .tab-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--sub); font-size: 11px; font-weight: 500; background: none; border: none; padding: 6px 18px; }
+    .tab-btn.active { color: var(--blue); }
+    .ios-card { background: var(--card); border-radius: 14px; margin: 0 16px 14px; padding: 14px; }
+    .ios-btn { width: 100%; background: var(--blue); color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .ios-input { width: 100%; background: var(--card2); border: none; border-radius: 10px; padding: 12px; color: #fff; font-size: 15px; outline: none; margin-bottom: 10px; }
+    .badge-v { color: #38bdf8; font-weight: 800; }
+    .badge-p { color: var(--purple); font-weight: 800; }
   </style>
 </head>
 <body>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-
-  <div id="auth-screen">
-    <div class="auth-card glass" id="step-phone">
-      <div class="tg-circle">✈️</div>
-      <h2 style="margin-bottom:8px;">PrivateGram</h2>
-      <p style="color:var(--dim);font-size:14px;margin-bottom:20px;">Введите виртуальный номер (+1, +7 или +888)</p>
-      <div id="err-phone" style="color:#f87171;font-size:13px;margin-bottom:8px;"></div>
-      <input id="phone-input" class="inp" placeholder="+79991234567" />
-      <button class="btn" onclick="sendCode()">Получить код в боте</button>
+    <!-- ЭКРАН ВХОДА -->
+  <div id="authScreen" class="screen" style="justify-content:center; padding:28px; text-align:center;">
+    <div class="avatar" style="width:84px; height:84px; font-size:38px; margin:0 auto 18px;">✈️</div>
+    <h1 style="font-size:26px; margin-bottom:8px;">PointGram</h1>
+    <p id="authSub" style="color:var(--sub); font-size:14px; margin-bottom:24px;">Введите виртуальный номер (+1, +7 или +888)</p>
+    <div id="stepPhone">
+      <input id="phoneInput" class="ios-input" placeholder="+79991234567" style="text-align:center; font-size:17px;" />
+      <button class="ios-btn" onclick="sendCode()">Получить код в боте</button>
     </div>
-
-    <div class="auth-card glass" id="step-code" style="display:none;">
-      <div class="tg-circle">🔐</div>
-      <h2 style="margin-bottom:8px;">Введите код</h2>
-      <p style="color:var(--dim);font-size:14px;margin-bottom:20px;">Мы отправили 5-значный код в Telegram-бота</p>
-      <div id="err-code" style="color:#f87171;font-size:13px;margin-bottom:8px;"></div>
-      <input id="code-input" class="inp" placeholder="12345" maxlength="5" style="text-align:center;font-size:20px;letter-spacing:5px;" />
-      <button class="btn" onclick="verifyCode()">Войти</button>
+    <div id="stepCode" class="hidden">
+      <input id="codeInput" class="ios-input" placeholder="12345" style="text-align:center; font-size:20px; letter-spacing:4px;" />
+      <button class="ios-btn" onclick="verifyCode()">Войти</button>
     </div>
+    <p id="authErr" style="color:#ff453a; font-size:13px; margin-top:12px;"></p>
   </div>
-    <div id="app-screen">
-    <div class="sidebar glass">
-      <div class="top-bar">
-        <button class="icon-btn" onclick="toggleDrawer(true)">☰</button>
-        <input class="search" id="search-input" placeholder="Поиск людей, каналов..." oninput="renderLists()" />
-      </div>
-      <div class="tabs">
-        <button class="tab active" id="tab-all" onclick="switchTab('all')">Чаты</button>
-        <button class="tab" id="tab-channels" onclick="switchTab('channels')">Каналы</button>
-        <button class="tab" onclick="openMarket()">💎 Маркет</button>
-      </div>
-      <div class="chat-list" id="chat-list"></div>
-    </div>
 
-    <div class="chat-area" id="chat-area">
-      <div class="chat-header glass" id="chat-header" style="display:none;">
-        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="openPeerProfile()">
-          <button class="icon-btn back-btn" onclick="event.stopPropagation(); closeMobileChat()">←</button>
-          <div class="avatar" id="peer-avatar" style="width:40px;height:40px;font-size:15px;"></div>
-          <div>
-            <div class="chat-title" id="peer-title"></div>
-            <div class="chat-sub" id="peer-sub"></div>
-          </div>
+  <!-- ОСНОВНОЙ ЭКРАН -->
+  <div id="mainScreen" class="screen hidden">
+    <!-- ВКЛАДКА ЧАТЫ -->
+    <div id="tabChats" class="screen">
+      <d    <!-- ВКЛАДКА МАРКЕТ -->
+    <div id="tabMarket" class="screen hidden">
+      <div class="ios-header">
+        <span style="font-weight:600; font-size:17px;">Fragment Маркет</span>
+        <span id="marketStars" style="color:var(--gold); font-weight:700;">⭐️ 0</span>
+      </div>
+      <div class="scroll-area" style="padding-top:14px;">
+        <div class="ios-card" style="background:linear-gradient(135deg, rgba(191,90,242,0.28), rgba(10,132,255,0.28));">
+          <div style="font-size:18px; font-weight:700; margin-bottom:4px;">★ PointGram Premium</div>
+          <div style="color:#d1d1d6; font-size:13px; margin-bottom:12px;">Фиолетовая звезда в профиле и статус</div>
+          <button class="ios-btn" onclick="buyPremium()">Подключить за 200 ⭐️</button>
         </div>
-        <button class="icon-btn" id="gift-header-btn" onclick="openGiftPicker()">🎁</button>
-      </div>
-      <div class="messages" id="messages-box">
-        <div style="margin:auto;padding:10px 18px;border-radius:18px;background:rgba(255,255,255,0.06);color:var(--dim);font-size:14px;">Выберите чат или «Избранное» в меню ☰</div>
-      </div>
-      <div class="input-bar glass" id="input-bar" style="display:none;">
-        <button class="icon-btn" onclick="openGiftPicker()">🎁</button>
-        <input id="msg-input" placeholder="Сообщение..." onkeydown="if(event.key==='Enter') sendMessage()" />
-        <button class="send-btn" onclick="sendMessage()">➤</button>
+        <div style="padding:0 16px 8px; color:var(--sub); font-size:12px; text-transform:uppercase;">Коллекционные NFT</div>
+        <div id="nftList"></div>
       </div>
     </div>
-    </div>
-     <div class="overlay" id="overlay" onclick="closeAllModals()"></div>
 
-  <div class="drawer glass" id="drawer">
-    <div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border);">
-      <div class="avatar" id="drawer-avatar"></div>
-      <div>
-        <div class="chat-title" id="drawer-name"></div>
-        <div class="chat-sub" id="drawer-phone"></div>
-        <div style="font-size:13px;color:#fbbf24;margin-top:3px;font-weight:600;" id="drawer-stars">⭐️ 0 Stars</div>
+    <!-- ВКЛАДКА ПРОФИЛЬ -->
+    <div id="tabProfile" class="screen hidden">
+      <div class="ios-header">
+        <span style="color:#ff453a; font-size:16px; cursor:pointer;" onclick="logout()">Выйти</span>
+        <span style="font-weight:600; font-size:17px;">Мой профиль</span>
+        <span id="editToggleBtn" style="color:var(--blue); font-size:16px; font-weight:600; cursor:pointer;" onclick="toggleEditProfile()">Изм.</span>
+      </div>
+      <div class="scroll-area" style="padding-top:18px;">
+        <div style="text-align:center; margin-bottom:18px;">
+          <div id="profAvatar" class="avatar" style="width:90px; height:90px; font-size:36px; margin:0 auto 12px;">U</div>
+          <div id="profNameRow" style="font-size:23px; font-weight:700;">Имя</div>
+          <div id="profSubRow" style="color:var(--sub); font-size:14px; margin-top:4px;">+7 • ⭐️ 0</div>
+        </div>
+        <div id="editProfileBox" class="ios-card hidden">
+          <input id="editFirst" class="ios-input" placeholder="Имя" />
+          <input id="editUser" class="ios-input" placeholder="Юзернейм (без @)" />
+          <input id="editBio" class="ios-input" placeholder="О себе" />
+          <button class="ios-btn" onclick="saveProfile()">Сохранить изменения</button>
+        </div>
+        <div class="ios-card">
+          <div style="color:var(--sub); font-size:12px;">О себе</div>
+          <div id="profBio" style="font-size:15px; margin:4px 0 10px;">Не указано</div>
+          <div style="height:0.5px; background:var(--sep); margin-bottom:10px;"></div>
+          <div style="color:var(--sub); font-size:12px;">Юзернейм</div>
+          <div id="profUsername" style="color:var(--blue); font-size:15px; margin-top:4px;">Не задан</div>
+        </div>
+        <div id="profNftCard" class="ios-card hidden">
+          <div style="color:var(--sub); font-size:12px; margin-bottom:8px;">💎 Мои коллекционные NFT (нажми, чтобы надеть)</div>
+          <div id="profNftList"></div>
+        </div>
+        <div class="ios-card">
+          <div id="profGiftsTitle" style="color:var(--sub); font-size:12px; margin-bottom:8px;">🎁 Витрина подарков (0)</div>
+          <div id="profGiftsList" style="color:var(--sub); font-size:14px;">Пока нет подарков</div>
+        </div>
       </div>
     </div>
-    <div class="d-item" onclick="openSavedMessages()">🔖 Избранное</div>
-    <div class="d-item" onclick="openMySettings()">⚙️ Настройки и NFT</div>
-    <div class="d-item" onclick="openMarket()">💎 Маркет NFT и Premium</div>
-    <div class="d-item" onclick="openCreateChannel()">📢 Создать канал</div>
-    <div class="d-item" style="color:#f87171;margin-top:auto;" onclick="logout()">🚪 Выйти</div>
+
+    <!-- НИЖНЯЯ ПАНЕЛЬ ВКЛАДОК iOS -->
+    <div class="tab-bar">
+      <button id="nav0" class="tab-btn active" onclick="switchTab(0)"><span style="font-size:21px;">💬</span><span>Чаты</span></button>
+      <button id="nav1" class="tab-btn" onclick="switchTab(1)"><span style="font-size:21px;">💎</span><span>Маркет</span></button>
+      <button id="nav2" class="tab-btn" onclick="switchTab(2)"><span style="font-size:21px;">👤</span><span>Профиль</span></button>
+    </div>
+    </div>
+    iv class="ios-header">
+        <span style="color:var(--blue); font-size:16px; cursor:pointer;" onclick="openNewChannel()">+ Канал</span>
+        <span style="font-weight:600; font-size:17px;">PointGram</span>
+        <span style="color:var(--blue); font-size:18px; cursor:pointer;" onclick="loadBootstrap()">↻</span>
+      </div>
+      <div class="ios-title-lg">Чаты</div>
+      <div class="search-box">
+        <span style="color:var(--sub);">🔍</span>
+        <input id="searchInput" placeholder="Поиск людей и каналов" oninput="renderLists()" />
+      </div>
+      <div id="chatList" class="scroll-area"></div>
+    </div>
+      <!-- ЭКРАН ПЕРЕПИСКИ (ЧАТ) -->
+  <div id="chatScreen" class="screen hidden">
+    <div class="ios-header">
+      <span style="color:var(--blue); font-size:17px; cursor:pointer;" onclick="closeChat()">‹ Назад</span>
+      <div style="text-align:center;">
+        <div id="chatTitle" style="font-weight:600; font-size:16px;">Чат</div>
+        <div id="chatStatus" style="color:var(--sub); font-size:12px;">в сети</div>
+      </div>
+      <span id="giftBtn" style="font-size:21px; cursor:pointer;" onclick="openGiftModal()">🎁</span>
+    </div>
+    <div id="msgWall" class="chat-wall"></div>
+    <div style="background:var(--bar); border-top:0.5px solid var(--sep); padding:8px 12px; display:flex; gap:8px; align-items:center;">
+      <input id="msgInput" class="ios-input" placeholder="Сообщение..." style="margin:0; border-radius:20px; padding:10px 14px;" onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button onclick="sendMessage()" style="background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; flex-shrink:0;">➤</button>
+    </div>
   </div>
 
-  <div class="modal glass" id="modal-settings">
-    <h3 style="margin-bottom:12px;">⚙️ Настройки профиля</h3>
-    <input id="set-name" class="inp" placeholder="Имя" />
-    <input id="set-username" class="inp" placeholder="Юзернейм (без @)" />
-    <input id="set-bio" class="inp" placeholder="О себе (Bio)" />
-    <div style="margin:10px 0;"><div style="font-size:12px;color:var(--dim);margin-bottom:4px;">Мои NFT-активы:</div><div id="my-nft-list"></div></div>
-    <button class="btn" onclick="saveProfile()">Сохранить</button>
-  </div>
-    <div class="modal glass" id="modal-peer">
-    <div style="text-align:center;margin-bottom:14px;">
-      <div class="avatar" id="vp-avatar" style="width:70px;height:70px;font-size:26px;margin:0 auto 10px;"></div>
-      <h3 id="vp-name" style="display:flex;align-items:center;justify-content:center;gap:6px;"></h3>
-      <div id="vp-sub" style="color:var(--dim);font-size:13px;margin-top:4px;"></div>
-      <p id="vp-bio" style="font-size:14px;margin-top:8px;color:#cbd5e1;"></p>
-    </div>
-    <div style="border-top:1px solid var(--border);padding-top:10px;">
-      <div style="font-size:12px;color:var(--dim);">Коллекционные NFT:</div><div id="vp-nfts" style="margin:4px 0 10px;"></div>
-      <div style="font-size:12px;color:var(--dim);">Витрина подарков:</div><div id="vp-gifts" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+  <!-- МОДАЛКА ПОДАРКОВ -->
+  <div id="giftModal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:99; display:flex; align-items:flex-end;">
+    <div style="background:var(--card); width:100%; border-radius:20px 20px 0 0; padding:18px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-weight:700; font-size:17px;">🎁 Отправить подарок</span>
+        <span style="color:var(--blue); cursor:pointer;" onclick="document.getElementById('giftModal').classList.add('hidden')">Закрыть</span>
+      </div>
+      <div id="giftCatalogList" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
   </div>
 
-  <div class="modal glass" id="modal-market">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h3>💎 Fragment Маркет</h3><span id="market-balance" style="color:#fbbf24;font-weight:700;">⭐️ 0</span>
-    </div>
-    <div style="background:linear-gradient(135deg,rgba(168,85,247,0.3),rgba(59,130,246,0.3));padding:14px;border-radius:16px;border:1px solid rgba(192,132,252,0.4);margin-bottom:14px;">
-      <div style="font-weight:700;">★ Telegram Premium</div>
-      <div style="font-size:12px;color:#e2e8f0;margin:4px 0 10px;">Фиолетовая звезда и статус в профиле</div>
-      <button class="btn" style="padding:9px;" onclick="buyPremium()">Купить за 200 ⭐️</button>
-    </div>
-    <div class="shop-grid" id="nft-shop-grid"></div>
-  </div>
-
-  <div class="modal glass" id="modal-gifts">
-    <h3 style="margin-bottom:10px;">🎁 Отправить подарок</h3>
-    <div class="shop-grid" id="gift-picker-grid"></div>
-  </div>
-
-  <div class="modal glass" id="modal-channel">
-    <h3 style="margin-bottom:12px;">📢 Новый канал</h3>
-    <input id="ch-title" class="inp" placeholder="Название канала" />
-    <input id="ch-user" class="inp" placeholder="Юзернейм (необязательно)" />
-    <button class="btn" onclick="createChannel()">Создать</button>
-  </div>
   <script>
-  const socket = io();
-  let currentUser = JSON.parse(localStorage.getItem('pg_user') || 'null');
-  let allUsers = [], allChannels = [], giftsCatalog = [], nftMarket = [];
-  let currentTab = 'all', activeChat = null;
+    const socket = io();
+    let me = JSON.parse(localStorage.getItem('pg_user') || 'null');
+    let allUsers = [], allChannels = [], giftsCatalog = [], nftMarket = [];
+    let currentPeer = null, isChannel = false;
 
-  if (currentUser) bootApp();
-
-  async function sendCode() {
-    const phone = document.getElementById('phone-input').value;
-    const res = await fetch('/api/auth/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
-    const d = await res.json();
-    if (!res.ok) return document.getElementById('err-phone').innerText = d.error;
-    document.getElementById('step-phone').style.display = 'none';
-    document.getElementById('step-code').style.display = 'block';
-  }
-
-  async function verifyCode() {
-    const phone = document.getElementById('phone-input').value;
-    const code = document.getElementById('code-input').value;
-    const res = await fetch('/api/auth/verify-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, code }) });
-    const d = await res.json();
-    if (!res.ok) return document.getElementById('err-code').innerText = d.error;
-    currentUser = d.user;
-    localStorage.setItem('pg_user', JSON.stringify(currentUser));
-    bootApp();
-  }
-
-  function logout() { localStorage.removeItem('pg_user'); location.reload(); }
-      async function bootApp() {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'flex';
-    socket.emit('join', currentUser.id);
-    await refreshData();
-  }
-
-  async function refreshData() {
-    const res = await fetch(`/api/bootstrap/${currentUser.id}`);
-    const data = await res.json();
-    currentUser = data.me;
-    localStorage.setItem('pg_user', JSON.stringify(currentUser));
-    allUsers = data.users;
-    allChannels = data.channels;
-    giftsCatalog = data.giftsCatalog;
-    nftMarket = data.nftMarket;
-    updateDrawerUI();
-    renderLists();
-  }
-
-  function badges(u) {
-    let h = '';
-    if (u.is_verified) h += `<span class="badge-v">✓</span>`;
-    if (u.is_premium) h += `<span class="badge-p">★</span>`;
-    return h;
-  }
-
-  function updateDrawerUI() {
-    const av = document.getElementById('drawer-avatar');
-    av.style.background = currentUser.avatar_color;
-    av.innerText = currentUser.first_name[0].toUpperCase();
-    document.getElementById('drawer-name').innerHTML = `${currentUser.first_name} ${badges(currentUser)}`;
-    document.getElementById('drawer-phone').innerText = `${currentUser.phone} ${currentUser.username ? '• @' + currentUser.username : ''}`;
-    document.getElementById('drawer-stars').innerText = `⭐️ ${currentUser.stars_balance} Stars`;
-    document.getElementById('market-balance').innerText = `⭐️ ${currentUser.stars_balance}`;
+    if (me) { showMain(); }
+        async function sendCode() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const r = await fetch('/api/auth/send-code', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone}) });
+      const d = await r.json();
+      if (!r.ok) return document.getElementById('authErr').innerText = d.error;
+      document.getElementById('authErr').innerText = '';
+      document.getElementById('stepPhone').classList.add('hidden');
+      document.getElementById('stepCode').classList.remove('hidden');
+      document.getElementById('authSub').innerText = 'Код отправлен в вашего Telegram-бота';
     }
-      function switchTab(t) {
-    currentTab = t;
-    document.getElementById('tab-all').classList.toggle('active', t === 'all');
-    document.getElementById('tab-channels').classList.toggle('active', t === 'channels');
-    renderLists();
-  }
 
-  function renderLists() {
-    const q = document.getElementById('search-input').value.toLowerCase();
-    const list = document.getElementById('chat-list');
-    list.innerHTML = '';
+    async function verifyCode() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const code = document.getElementById('codeInput').value.trim();
+      const r = await fetch('/api/auth/verify-code', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, code}) });
+      const d = await r.json();
+      if (!r.ok) return document.getElementById('authErr').innerText = d.error;
+      me = d.user; localStorage.setItem('pg_user', JSON.stringify(me)); showMain();
+    }
 
-    if (currentTab === 'all') {
-      const saved = document.createElement('div');
-      saved.className = 'chat-item';
-      saved.innerHTML = `<div class="avatar" style="background:linear-gradient(135deg,#38bdf8,#2563eb);">🔖</div><div class="chat-info"><div class="chat-title">Избранное</div><div class="chat-sub">Заметки и тест подарков</div></div>`;
-      saved.onclick = () => openDirectChat(currentUser, true);
-      list.appendChild(saved);
+    function logout() { localStorage.removeItem('pg_user'); location.reload(); }
 
-      allUsers.forEach(u => {
-        if (u.id === currentUser.id) return;
-        if (!u.first_name.toLowerCase().includes(q) && !(u.username || '').includes(q) && !u.phone.includes(q)) return;
-        const div = document.createElement('div');
-        div.className = 'chat-item';
-        div.innerHTML = `<div class="avatar" style="background:${u.avatar_color};">${u.first_name.toUpperCase()}</div><div class="chat-info"><div class="chat-title">${u.first_name} ${badges(u)}</div><div class="chat-sub">${u.username ? '@' + u.username : u.phone}</div></div>`;
-        div.onclick = () => openDirectChat(u, false);
-        list.appendChild(div);
+    function showMain() {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('mainScreen').classList.remove('hidden');
+      socket.emit('register_socket', me.id);
+      loadBootstrap();
+    }
+
+    function switchTab(idx) {
+      [0,1,2].forEach(i => {
+        document.getElementById(['tabChats','tabMarket','tabProfile'][i]).classList.toggle('hidden', i !== idx);
+        document.getElementById('nav'+i).classList.toggle('active', i === idx);
       });
-    } else {
-      allChannels.forEach(ch => {
-        if (!ch.title.toLowerCase().includes(q)) return;
-        const div = document.createElement('div');
-        div.className = 'chat-item';
-        div.innerHTML = `<div class="avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899);">📢</div><div class="chat-info"><div class="chat-title">${ch.title} ${ch.is_verified ? '<span class="badge-v">✓</span>' : ''}</div><div class="chat-sub">${ch.username ? '@' + ch.username : 'Канал'}</div></div>`;
-        div.onclick = () => openChannelChat(ch);
-        list.appendChild(div);
+      loadBootstrap();
+    }
+
+    async function loadBootstrap() {
+      const r = await fetch('/api/bootstrap/' + me.id);
+      const d = await r.json();
+      me = d.me; localStorage.setItem('pg_user', JSON.stringify(me));
+      allUsers = d.users; allChannels = d.channels; giftsCatalog = d.giftsCatalog; nftMarket = d.nftMarket;
+      renderLists(); renderMarket(); renderProfile();
+    }
+
+    function renderLists() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      let html = `<div class="chat-row" onclick="openChat(${me.id}, false, 'Избранное', 'Личные заметки')">
+        <div class="avatar" style="background:var(--blue);">🔖</div>
+        <div><div style="font-weight:600; font-size:16px;">Избранное</div><div style="color:var(--sub); font-size:14px;">Сохранённые сообщения</div></div>
+      </div>`;
+      allUsers.filter(u => u.id !== me.id && (u.first_name.toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q))).forEach(u => {
+        const badges = (u.is_verified ? ' <span class="badge-v">✓</span>' : '') + (u.is_premium ? ' <span class="badge-p">★</span>' : '');
+        html += `<div class="chat-row" onclick="openChat(${u.id}, false, '${u.first_name.replace(/'/g,"")}', '${u.phone}')">
+          <div class="avatar">${u.first_name[0].toUpperCase()}</div>
+          <div><div style="font-weight:600; font-size:16px;">${u.first_name}${badges}</div>
+          <div style="color:var(--sub); font-size:14px;">${u.username ? '@'+u.username : u.phone}</div></div>
+        </div>`;
       });
+      allChannels.filter(c => c.title.toLowerCase().includes(q)).forEach(c => {
+        const v = c.is_verified ? ' <span class="badge-v">✓</span>' : '';
+        html += `<div class="chat-row" onclick="openChat(${c.id}, true, '${c.title.replace(/'/g,"")}', 'Канал')">
+          <div class="avatar" style="background:linear-gradient(135deg,#bf5af2,#5e5ce6);">📢</div>
+          <div><div style="font-weight:600; font-size:16px;">${c.title}${v}</div>
+          <div style="color:var(--sub); font-size:14px;">${c.username ? '@'+c.username : 'Канал'}</div></div>
+        </div>`;
+      });
+      document.getElementById('chatList').innerHTML = html;
+                                                                                   }
+        async function openChat(id, ch, title, status) {
+      currentPeer = id; isChannel = ch;
+      document.getElementById('mainScreen').classList.add('hidden');
+      document.getElementById('chatScreen').classList.remove('hidden');
+      document.getElementById('chatTitle').innerText = title;
+      document.getElementById('chatStatus').innerText = status;
+      document.getElementById('giftBtn').classList.toggle('hidden', ch);
+      if (ch) socket.emit('join_channel', id);
+      const url = ch ? '/api/messages/channel/' + id : `/api/messages/direct/${me.id}/${id}`;
+      const msgs = await (await fetch(url)).json();
+      document.getElementById('msgWall').innerHTML = '';
+      msgs.forEach(appendMsg);
     }
+
+    function closeChat() {
+      currentPeer = null;
+      document.getElementById('chatScreen').classList.add('hidden');
+      document.getElementById('mainScreen').classList.remove('hidden');
+      loadBootstrap();
     }
-      async function openDirectChat(user, isSaved) {
-    activeChat = { type: 'direct', data: user, isSaved };
-    document.getElementById('chat-header').style.display = 'flex';
-    document.getElementById('input-bar').style.display = 'flex';
-    document.getElementById('gift-header-btn').style.display = 'flex';
-    const av = document.getElementById('peer-avatar');
-    av.style.background = isSaved ? 'linear-gradient(135deg,#38bdf8,#2563eb)' : user.avatar_color;
-    av.innerText = isSaved ? '🔖' : user.first_name[0].toUpperCase();
-    document.getElementById('peer-title').innerHTML = isSaved ? 'Избранное' : `${user.first_name} ${badges(user)}`;
-    document.getElementById('peer-sub').innerText = isSaved ? 'Личное облако' : `${user.phone} ${user.username ? '• @' + user.username : ''}`;
-    document.getElementById('chat-area').classList.add('open');
-    const res = await fetch(`/api/messages/direct/${currentUser.id}/${user.id}`);
-    const msgs = await res.json();
-    const box = document.getElementById('messages-box');
-    box.innerHTML = '';
-    msgs.forEach(renderMsg);
-  }
 
-  async function openChannelChat(ch) {
-    activeChat = { type: 'channel', data: ch };
-    document.getElementById('chat-header').style.display = 'flex';
-    document.getElementById('input-bar').style.display = 'flex';
-    document.getElementById('gift-header-btn').style.display = 'none';
-    const av = document.getElementById('peer-avatar');
-    av.style.background = 'linear-gradient(135deg,#8b5cf6,#ec4899)';
-    av.innerText = '📢';
-    document.getElementById('peer-title').innerHTML = `${ch.title} ${ch.is_verified ? '<span class="badge-v">✓</span>' : ''}`;
-    document.getElementById('peer-sub').innerText = ch.username ? '@' + ch.username : 'Канал';
-    document.getElementById('chat-area').classList.add('open');
-    const res = await fetch(`/api/messages/channel/${ch.id}`);
-    const msgs = await res.json();
-    const box = document.getElementById('messages-box');
-    box.innerHTML = '';
-    msgs.forEach(renderChannelMsg);
-  }
-
-  function closeMobileChat() { document.getElementById('chat-area').classList.remove('open'); }
-      function renderMsg(m) {
-    const box = document.getElementById('messages-box');
-    const div = document.createElement('div');
-    div.className = 'msg ' + (m.sender_id === currentUser.id ? 'out' : 'in');
-    const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    if (m.gift_json) {
-      const g = typeof m.gift_json === 'string' ? JSON.parse(m.gift_json) : m.gift_json;
-      div.innerHTML = `<div class="gift-card"><div style="font-size:42px;">${g.emoji}</div><b>${g.name}</b><div style="font-size:12px;color:#ddd6fe;">${g.rarity} • ⭐️ ${g.price}</div></div><div style="font-size:11px;opacity:0.6;text-align:right;margin-top:4px;">${time}</div>`;
-    } else {
-      div.innerHTML = `${m.text}<div style="font-size:11px;opacity:0.6;text-align:right;margin-top:4px;">${time}</div>`;
+    function appendMsg(m) {
+      const isOut = !isChannel && m.sender_id === me.id;
+      const time = new Date(m.created_at || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      let inner = '';
+      if (m.gift_json) {
+        const g = typeof m.gift_json === 'string' ? JSON.parse(m.gift_json) : m.gift_json;
+        inner = `<div style="text-align:center; padding:6px 10px;"><div style="font-size:44px;">${g.emoji}</div><div style="font-weight:700;">${g.name}</div><div style="font-size:12px; color:#d1d1d6;">${g.rarity} • ⭐️ ${g.price}</div></div>`;
+      } else {
+        inner = `<div>${m.text}</div>`;
+      }
+      const author = isChannel ? `<div style="color:var(--blue); font-size:12px; font-weight:700; margin-bottom:2px;">${m.sender_name || 'Автор'}</div>` : '';
+      document.getElementById('msgWall').innerHTML += `<div class="msg ${isOut ? 'out' : 'in'}">${author}${inner}<div class="msg-time">${time}</div></div>`;
+      const w = document.getElementById('msgWall'); w.scrollTop = w.scrollHeight;
     }
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-  }
 
-  function renderChannelMsg(m) {
-    const box = document.getElementById('messages-box');
-    const div = document.createElement('div');
-    div.className = 'msg in';
-    div.innerHTML = `<div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:3px;">${m.sender_name || 'Автор'} ${m.sender_verified ? '✓' : ''}</div>${m.text}`;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-  }
-
-  function sendMessage() {
-    const inp = document.getElementById('msg-input');
-    if (!inp.value.trim() || !activeChat) return;
-    if (activeChat.type === 'channel') {
-      socket.emit('send_message', { sender_id: currentUser.id, channel_id: activeChat.data.id, text: inp.value });
-    } else {
-      socket.emit('send_message', { sender_id: currentUser.id, receiver_id: activeChat.data.id, text: inp.value });
+    function sendMessage() {
+      const inp = document.getElementById('msgInput');
+      const text = inp.value.trim();
+      if (!text) return;
+      inp.value = '';
+      socket.emit('send_message', { sender_id: me.id, receiver_id: isChannel ? null : currentPeer, channel_id: isChannel ? currentPeer : null, text });
     }
-    inp.value = '';
-  }
 
-  socket.on('new_message', (m) => {
-    if (activeChat && activeChat.type === 'direct' && ((m.sender_id === currentUser.id && m.receiver_id === activeChat.data.id) || (m.sender_id === activeChat.data.id && m.receiver_id === currentUser.id))) renderMsg(m);
-  });
-  socket.on('new_channel_message', (m) => {
-    if (activeChat && activeChat.type === 'channel' && activeChat.data.id === m.channel_id) renderChannelMsg(m);
-  });
-      function toggleDrawer(open) {
-    document.getElementById('overlay').style.display = open ? 'block' : 'none';
-    document.getElementById('drawer').classList.toggle('open', open);
-  }
-  function closeAllModals() {
-    document.getElementById('overlay').style.display = 'none';
-    document.getElementById('drawer').classList.remove('open');
-    document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
-  }
-  function openModal(id) {
-    closeAllModals();
-    document.getElementById('overlay').style.display = 'block';
-    document.getElementById(id).classList.add('open');
-  }
-  function openSavedMessages() { closeAllModals(); openDirectChat(currentUser, true); }
-
-  function openMySettings() {
-    document.getElementById('set-name').value = currentUser.first_name;
-    document.getElementById('set-username').value = currentUser.username || '';
-    document.getElementById('set-bio').value = currentUser.bio || '';
-    const nftBox = document.getElementById('my-nft-list');
-    nftBox.innerHTML = '';
-    (currentUser.nft_usernames || []).forEach(u => nftBox.innerHTML += `<span class="nft-tag">💎 ${u}</span>`);
-    (currentUser.nft_numbers || []).forEach(n => nftBox.innerHTML += `<span class="nft-tag">📱 ${n}</span>`);
-    if (!nftBox.innerHTML) nftBox.innerHTML = '<span style="font-size:12px;color:var(--dim);">Нет NFT</span>';
-    openModal('modal-settings');
-  }
-
-  async function saveProfile() {
-    const res = await fetch('/api/profile/update', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: currentUser.id, first_name: document.getElementById('set-name').value, username: document.getElementById('set-username').value, bio: document.getElementById('set-bio').value })
+    socket.on('receive_message', m => {
+      if (!currentPeer) return;
+      if (!isChannel && ((m.sender_id === me.id && m.receiver_id === currentPeer) || (m.sender_id === currentPeer && m.receiver_id === me.id))) appendMsg(m);
+      if (isChannel && m.channel_id === currentPeer) appendMsg(m);
     });
-    const d = await res.json();
-    if (!res.ok) return alert(d.error);
-    await refreshData();
-    closeAllModals();
-  }
-      function openPeerProfile() {
-    if (!activeChat || activeChat.type !== 'direct') return;
-    const u = activeChat.isSaved ? currentUser : (allUsers.find(x => x.id === activeChat.data.id) || activeChat.data);
-    const av = document.getElementById('vp-avatar');
-    av.style.background = u.avatar_color;
-    av.innerText = u.first_name.toUpperCase();
-    document.getElementById('vp-name').innerHTML = `${u.first_name} ${badges(u)}`;
-    document.getElementById('vp-sub').innerText = `${u.phone} ${u.username ? '• @' + u.username : ''}`;
-    document.getElementById('vp-bio').innerText = u.bio || 'Нет описания';
-    const nfts = document.getElementById('vp-nfts'); nfts.innerHTML = '';
-    (u.nft_usernames || []).forEach(x => nfts.innerHTML += `<span class="nft-tag">💎 ${x}</span>`);
-    (u.nft_numbers || []).forEach(x => nfts.innerHTML += `<span class="nft-tag">📱 ${x}</span>`);
-    if (!nfts.innerHTML) nfts.innerHTML = '<span style="font-size:12px;color:var(--dim);">Нет NFT</span>';
-    const gifts = document.getElementById('vp-gifts'); gifts.innerHTML = '';
-    (u.gifts || []).forEach(g => gifts.innerHTML += `<div class="shop-card" style="padding:8px;min-width:85px;"><div style="font-size:26px;">${g.emoji}</div><div style="font-size:11px;font-weight:600;">${g.name}</div></div>`);
-    if (!gifts.innerHTML) gifts.innerHTML = '<span style="font-size:12px;color:var(--dim);">Нет подарков</span>';
-    openModal('modal-peer');
-  }
 
-  function openMarket() {
-    const grid = document.getElementById('nft-shop-grid'); grid.innerHTML = '';
-    nftMarket.forEach(item => {
-      const card = document.createElement('div'); card.className = 'shop-card';
-      card.innerHTML = `<div style="font-size:20px;">${item.type === 'number' ? '📱' : '💎'}</div><div style="font-weight:700;font-size:13px;margin:4px 0;">${item.value}</div><button class="btn" style="padding:6px;font-size:12px;" onclick="buyNft('${item.type}','${item.value}',${item.price})">${item.price} ⭐️</button>`;
-      grid.appendChild(card);
-    });
-    openModal('modal-market');
-  }
+    function openGiftModal() {
+      document.getElementById('giftModal').classList.remove('hidden');
+      document.getElementById('giftCatalogList').innerHTML = giftsCatalog.map(g =>
+        `<button class="ios-btn" style="background:var(--card2); display:flex; justify-content:space-between;" onclick="sendGift('${g.id}')"><span>${g.emoji} ${g.name}</span><span style="color:var(--gold);">${g.price} ⭐️</span></button>`
+      ).join('');
+    }
 
-  async function buyPremium() {
-    const res = await fetch('/api/shop/buy-premium', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser.id }) });
-    const d = await res.json();
-    if (!res.ok) return alert(d.error);
-    alert('🎉 Premium активирован!'); await refreshData(); closeAllModals();
-  }
+    async function sendGift(giftId) {
+      const r = await fetch('/api/shop/send-gift', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({senderId:me.id, receiverId:currentPeer, giftId}) });
+      const d = await r.json();
+      document.getElementById('giftModal').classList.add('hidden');
+      if (!r.ok) return alert(d.error);
+      loadBootstrap();
+    }
 
-  async function buyNft(type, value, price) {
-    const res = await fetch('/api/shop/buy-nft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser.id, type, value, price }) });
-    const d = await res.json();
-    if (!res.ok) return alert(d.error);
-    alert(`🎉 Куплено: ${value}!`); await refreshData(); closeAllModals();
-  }
+    async function openNewChannel() {
+      const title = prompt('Название канала:'); if (!title) return;
+      const username = prompt('Юзернейм канала (без @):') || '';
+      await fetch('/api/channels/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title, username, ownerId:me.id}) });
+      loadBootstrap();
+    }
 
-  function openGiftPicker() {
-    if (!activeChat || activeChat.type !== 'direct') return;
-    const grid = document.getElementById('gift-picker-grid'); grid.innerHTML = '';
-    giftsCatalog.forEach(g => {
-      const card = document.createElement('div'); card.className = 'shop-card';
-      card.innerHTML = `<div style="font-size:30px;">${g.emoji}</div><div style="font-weight:700;font-size:12px;margin:4px 0;">${g.name}</div><button class="btn" style="padding:6px;font-size:12px;" onclick="sendGift('${g.id}')">${g.price} ⭐️</button>`;
-      grid.appendChild(card);
-    });
-    openModal('modal-gifts');
-  }
+    function renderMarket() {
+      document.getElementById('marketStars').innerText = '⭐️ ' + (me.stars_balance || 0);
+      document.getElementById('nftList').innerHTML = nftMarket.map(n =>
+        `<div class="ios-card" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="color:var(--sub); font-size:12px;">${n.type==='number'?'📱 Анонимный номер':'💎 NFT-юзернейм'}</div><div style="font-weight:700; font-size:17px;">${n.value}</div></div>
+          <button class="ios-btn" style="width:auto; padding:9px 14px; background:var(--card2); color:var(--gold);" onclick="buyNft('${n.type}','${n.value}',${n.price})">${n.price} ⭐️</button>
+        </div>`
+      ).join('');
+    }
 
-  async function sendGift(giftId) {
-    const res = await fetch('/api/shop/send-gift', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senderId: currentUser.id, receiverId: activeChat.data.id, giftId }) });
-    const d = await res.json();
-    if (!res.ok) return alert(d.error);
-    await refreshData(); closeAllModals();
-  }
+    async function buyPremium() {
+      const r = await fetch('/api/shop/buy-premium', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:me.id}) });
+      const d = await r.json();
+      alert(r.ok ? '🎉 PointGram Premium активирован!' : d.error);
+      loadBootstrap();
+    }
 
-  function openCreateChannel() { openModal('modal-channel'); }
-  async function createChannel() {
-    const title = document.getElementById('ch-title').value;
-    const username = document.getElementById('ch-user').value;
-    if (!title) return;
-    const res = await fetch('/api/channels/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, username, ownerId: currentUser.id }) });
-    const d = await res.json();
-    if (!res.ok) return alert(d.error);
-    await refreshData(); switchTab('channels'); closeAllModals();
-  }
-</script>
+    async function buyNft(type, value, price) {
+      const r = await fetch('/api/shop/buy-nft', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:me.id, type, value, price}) });
+      const d = await r.json();
+      alert(r.ok ? '🎉 Куплено: ' + value : d.error);
+      loadBootstrap();
+    }
+
+    function toggleEditProfile() {
+      const box = document.getElementById('editProfileBox');
+      box.classList.toggle('hidden');
+      document.getElementById('editFirst').value = me.first_name || '';
+      document.getElementById('editUser').value = me.username || '';
+      document.getElementById('editBio').value = me.bio || '';
+    }
+
+    async function saveProfile() {
+      const body = { id: me.id, first_name: document.getElementById('editFirst').value, username: document.getElementById('editUser').value, bio: document.getElementById('editBio').value };
+      await fetch('/api/profile/update', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      document.getElementById('editProfileBox').classList.add('hidden');
+      loadBootstrap();
+    }
+
+    async function equipNft(type, val) {
+      const clean = val.replace('@','');
+      const body = { id: me.id, first_name: me.first_name, bio: me.bio, username: type==='username' ? clean : me.username, phone: type==='number' ? val : me.phone };
+      await fetch('/api/profile/update', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      alert('✅ Установлено в профиль: ' + val);
+      loadBootstrap();
+    }
+
+    function renderProfile() {
+      document.getElementById('profAvatar').innerText = (me.first_name || 'U').toUpperCase();
+      const badges = (me.is_verified ? ' <span class="badge-v">✓</span>' : '') + (me.is_premium ? ' <span class="badge-p">★</span>' : '');
+      document.getElementById('profNameRow').innerHTML = me.first_name + badges;
+      document.getElementById('profSubRow').innerText = `${me.phone} • ⭐️ ${me.stars_balance || 0}`;
+      document.getElementById('profBio').innerText = me.bio || 'Нажмите «Изм.», чтобы добавить описание';
+      document.getElementById('profUsername').innerText = me.username ? '@' + me.username : 'Не задан';
+
+      const nfts = [...(me.nft_usernames || []).map(v => ({t:'username', v})), ...(me.nft_numbers || []).map(v => ({t:'number', v}))];
+      document.getElementById('profNftCard').classList.toggle('hidden', nfts.length === 0);
+      document.getElementById('profNftList').innerHTML = nfts.map(n =>
+        `<div style="padding:8px 0; border-bottom:0.5px solid var(--sep); display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:700; color:${n.t==='number'?'var(--gold)':'var(--purple)'};">${n.v}</span>
+          <button class="ios-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="equipNft('${n.t}','${n.v}')">Надеть</button>
+        </div>`
+      ).join('');
+
+      const gifts = me.gifts || [];
+      document.getElementById('profGiftsTitle').innerText = `🎁 Витрина подарков (${gifts.length})`;
+      document.getElementById('profGiftsList').innerHTML = gifts.length === 0 ? 'Пока нет подарков' : gifts.map(g =>
+        `<div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:0.5px solid var(--sep);">
+          <span style="font-size:28px;">${g.emoji}</span>
+          <div><div style="color:#fff; font-weight:600;">${g.name}</div><div style="font-size:12px;">${g.rarity} • от ${g.from}</div></div>
+        </div>`
+      ).join('');
+    }
+  </script>
 </body>
 </html>
