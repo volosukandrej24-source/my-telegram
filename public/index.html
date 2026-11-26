@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Web — Private</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #0e1621; color: #fff; height: 100vh; display: flex; overflow: hidden; }
+    
+    #auth-screen { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .auth-box { background: #17212b; padding: 40px; border-radius: 16px; width: 360px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .auth-box h2 { margin-bottom: 10px; font-weight: 600; }
+    .auth-box p { color: #7f91a4; font-size: 14px; margin-bottom: 24px; line-height: 1.4; }
+    input { width: 100%; padding: 12px 15px; background: #242f3d; border: 1px solid #2b5278; border-radius: 8px; color: #fff; font-size: 16px; margin-bottom: 15px; outline: none; }
+    button { width: 100%; padding: 12px; background: #2b5278; border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #376796; }
+    .error { color: #ff595a; font-size: 13px; margin-bottom: 12px; }
+
+    #app-screen { display: none; width: 100%; height: 100%; }
+    .sidebar { width: 320px; background: #17212b; border-right: 1px solid #0e1621; display: flex; flex-direction: column; }
+    .sidebar-header { padding: 15px; background: #17212b; border-bottom: 1px solid #0e1621; display: flex; justify-content: space-between; align-items: center; }
+    .my-info { font-size: 13px; color: #6ab2f2; }
+    .logout-btn { background: transparent; width: auto; padding: 5px 10px; font-size: 12px; color: #7f91a4; border: 1px solid #242f3d; }
+    .chat-list { flex: 1; overflow-y: auto; }
+    .chat-item { padding: 12px 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #131b24; }
+    .chat-item:hover, .chat-item.active { background: #2b5278; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; background: #376796; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; flex-shrink: 0; }
+    .chat-meta { overflow: hidden; }
+    .chat-name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 5px; }
+    .chat-phone { font-size: 12px; color: #7f91a4; margin-top: 2px; }
+    .badge-verified { color: #4ea4f6; font-size: 14px; }
+    .badge-premium { color: #b76ef5; font-size: 14px; }
+
+    .chat-area { flex: 1; display: flex; flex-direction: column; background: #0e1621; }
+    .chat-header { padding: 15px 20px; background: #17212b; border-bottom: 1px solid #0e1621; font-weight: 600; }
+    .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .msg { max-width: 65%; padding: 10px 14px; border-radius: 12px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
+    .msg.in { background: #182533; align-self: flex-start; border-bottom-left-radius: 2px; }
+    .msg.out { background: #2b5278; align-self: flex-end; border-bottom-right-radius: 2px; }
+    .input-area { padding: 12px 15px; background: #17212b; display: flex; gap: 10px; }
+    .input-area input { margin-bottom: 0; }
+    .input-area button { width: 110px; }
+  </style>
+</head>
+<body>
+
+  <div id="auth-screen">
+    <div class="auth-box" id="step-phone">
+      <h2>Вход в мессенджер</h2>
+      <p>Введите виртуальный номер (+1 или +7), который выдал вам наш Telegram-бот</p>
+      <div class="error" id="err-phone"></div>
+      <input type="text" id="phone-input" placeholder="+79991234567">
+      <button onclick="sendCode()">Получить код в боте</button>
+    </div>
+
+    <div class="auth-box" id="step-code" style="display:none;">
+      <h2>Введите код</h2>
+      <p>Мы отправили 5-значный код в ваш Telegram-бот</p>
+      <div class="error" id="err-code"></div>
+      <input type="text" id="code-input" placeholder="12345" maxlength="5">
+      <button onclick="verifyCode()">Войти</button>
+    </div>
+  </div>
+
+  <div id="app-screen">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div>
+          <div style="font-weight:bold;" id="my-name">Мой профиль</div>
+          <div class="my-info" id="my-phone">+7...</div>
+        </div>
+        <button class="logout-btn" onclick="logout()">Выйти</button>
+      </div>
+      <div class="chat-list" id="chat-list"></div>
+    </div>
+
+    <div class="chat-area">
+      <div class="chat-header" id="active-chat-title">Выберите чат слева</div>
+      <div class="messages" id="messages"></div>
+      <div class="input-area" id="input-area" style="display:none;">
+        <input type="text" id="msg-input" placeholder="Написать сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+        <button onclick="sendMsg()">Отправить</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const socket = io();
+  let currentUser = JSON.parse(localStorage.getItem('tg_user'));
+  let activeReceiver = null;
+
+  if (currentUser) startApp();
+
+  async function sendCode() {
+    const phone = document.getElementById('phone-input').value;
+    const res = await fetch('/api/auth/send-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    if (!res.ok) return document.getElementById('err-phone').innerText = data.error;
+    document.getElementById('step-phone').style.display = 'none';
+    document.getElementById('step-code').style.display = 'block';
+  }
+
+  async function verifyCode() {
+    const phone = document.getElementById('phone-input').value;
+    const code = document.getElementById('code-input').value;
+    const res = await fetch('/api/auth/verify-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code })
+    });
+    const data = await res.json();
+    if (!res.ok) return document.getElementById('err-code').innerText = data.error;
+    localStorage.setItem('tg_user', JSON.stringify(data.user));
+    currentUser = data.user;
+    startApp();
+  }
+
+  function logout() {
+    localStorage.removeItem('tg_user');
+    location.reload();
+  }
+
+  async function startApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'flex';
+    document.getElementById('my-name').innerText = currentUser.first_name;
+    document.getElementById('my-phone').innerText = currentUser.phone;
+
+    socket.emit('join', currentUser.id);
+    loadUsers();
+  }
+
+  async function loadUsers() {
+    const res = await fetch('/api/users');
+    const users = await res.json();
+    const list = document.getElementById('chat-list');
+    list.innerHTML = '';
+
+    users.forEach(u => {
+      if (u.id === currentUser.id) return;
+      const verified = u.is_verified ? '<span class="badge-verified">✔</span>' : '';
+      const premium = u.is_premium ? '<span class="badge-premium">★</span>' : '';
+      const div = document.createElement('div');
+      div.className = 'chat-item';
+      div.innerHTML = `
+        <div class="avatar">${u.first_name.toUpperCase()}</div>
+        <div class="chat-meta">
+          <div class="chat-name">${u.first_name} ${verified} ${premium}</div>
+          <div class="chat-phone">${u.username ? '@' + u.username : u.phone}</div>
+        </div>
+      `;
+      div.onclick = () => selectChat(u);
+      list.appendChild(div);
+    });
+  }
+
+  async function selectChat(user) {
+    activeReceiver = user;
+    document.getElementById('active-chat-title').innerText = `${user.first_name} (${user.phone})`;
+    document.getElementById('input-area').style.display = 'flex';
+    const res = await fetch(`/api/messages/${currentUser.id}/${user.id}`);
+    const msgs = await res.json();
+    const box = document.getElementById('messages');
+    box.innerHTML = '';
+    msgs.forEach(renderMsg);
+  }
+
+  function renderMsg(m) {
+    const box = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.sender_id === currentUser.id ? 'out' : 'in');
+    div.innerText = m.text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function sendMsg() {
+    const input = document.getElementById('msg-input');
+    if (!input.value.trim() || !activeReceiver) return;
+    socket.emit('send_message', {
+      sender_id: currentUser.id,
+      receiver_id: activeReceiver.id,
+      text: input.value
+    });
+    input.value = '';
+  }
+
+  socket.on('new_message', (msg) => {
+    if (activeReceiver && (msg.sender_id === activeReceiver.id || msg.sender_id === currentUser.id)) {
+      renderMsg(msg);
+    }
+  });
+</script>
+</body>
+</html>
