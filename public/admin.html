@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard — Управление</title>
+  <style>
+    body { background: #0b0f17; color: #e2e8f0; font-family: sans-serif; padding: 30px; }
+    .login-box { max-width: 340px; margin: 100px auto; background: #161e2e; padding: 30px; border-radius: 12px; }
+    input, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #fff; }
+    button { background: #2563eb; border: none; cursor: pointer; font-weight: bold; }
+    button:hover { background: #1d4ed8; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #161e2e; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 12px; border-bottom: 1px solid #1e293b; text-align: left; font-size: 14px; }
+    th { background: #1e293b; color: #94a3b8; }
+    input[type="text"], input[type="number"] { width: 130px; }
+  </style>
+</head>
+<body>
+
+  <div id="login-screen" class="login-box">
+    <h2>Вход в Админ-панель</h2>
+    <input type="password" id="admin-pass" placeholder="Пароль администратора" style="width:100%; margin: 15px 0;">
+    <button onclick="login()" style="width:100%;">Войти</button>
+  </div>
+
+  <div id="panel" style="display:none;">
+    <h1>👑 Панель управления мессенджером</h1>
+    <p style="color:#94a3b8;">Здесь можно менять номера (например, выдавать +888), юзернеймы, галочки, Premium и баланс звёзд.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Имя</th>
+          <th>Номер (можно менять)</th>
+          <th>Username</th>
+          <th>Звёзды ⭐</th>
+          <th>Галочка ✔</th>
+          <th>Premium ★</th>
+          <th>Бан 🚫</th>
+          <th>Действие</th>
+        </tr>
+      </thead>
+      <tbody id="users-table"></tbody>
+    </table>
+  </div>
+
+<script>
+  let token = '';
+
+  async function login() {
+    const password = document.getElementById('admin-pass').value;
+    const res = await fetch('/api/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    if (!res.ok) return alert('Неверный пароль!');
+    token = password;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('panel').style.display = 'block';
+    loadUsers();
+  }
+
+  async function loadUsers() {
+    const res = await fetch('/api/admin/users', { headers: { 'x-admin-token': token } });
+    const users = await res.json();
+    const tbody = document.getElementById('users-table');
+    tbody.innerHTML = '';
+
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td>${u.first_name}</td>
+        <td><input type="text" id="phone_${u.id}" value="${u.phone}"></td>
+        <td><input type="text" id="user_${u.id}" value="${u.username || ''}" placeholder="без @"></td>
+        <td><input type="number" id="stars_${u.id}" value="${u.stars_balance}"></td>
+        <td><input type="checkbox" id="ver_${u.id}" ${u.is_verified ? 'checked' : ''}></td>
+        <td><input type="checkbox" id="prem_${u.id}" ${u.is_premium ? 'checked' : ''}></td>
+        <td><input type="checkbox" id="ban_${u.id}" ${u.is_banned ? 'checked' : ''}></td>
+        <td><button onclick="saveUser(${u.id})">Сохранить</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function saveUser(id) {
+    const body = {
+      id,
+      phone: document.getElementById(`phone_${id}`).value,
+      username: document.getElementById(`user_${id}`).value,
+      stars_balance: parseInt(document.getElementById(`stars_${id}`).value) || 0,
+      is_verified: document.getElementById(`ver_${id}`).checked,
+      is_premium: document.getElementById(`prem_${id}`).checked,
+      is_banned: document.getElementById(`ban_${id}`).checked
+    };
+
+    await fetch('/api/admin/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+      body: JSON.stringify(body)
+    });
+    alert('Изменения сохранены!');
+  }
+</script>
+</body>
+</html>
